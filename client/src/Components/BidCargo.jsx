@@ -70,7 +70,7 @@ function BidCargo({ userdata }) {
                     <h2>Place a Bid for {selectedCargo.title}</h2>
                     <BidForm userdata={userdata} cargoId={selectedCargo._id} />
                     <h2>Bids</h2>
-                    <BidsList cargoId={selectedCargo._id} />
+                    <BidsList cargoId={selectedCargo._id} cargoName={selectedCargo.title} userMail={userdata}/>
                 </div>
             )}
         </div>
@@ -179,7 +179,7 @@ function BidCargo({ userdata }) {
 //         </div>
 //     );
 // }
-function BidsList({ cargoId }) {
+function BidsList({ cargoId,cargoName, userMail }) {
     const [bids, setBids] = useState([]);
     const [lowestBid, setLowestBid] = useState(null);
 
@@ -208,26 +208,36 @@ function BidsList({ cargoId }) {
 
     useEffect(() => {
         if (lowestBid) {
-            const templateParams = {
-                to_name: lowestBid.companyName,
-                to_email: 'userskydive@gmail.com',
-                itemname: 'item',
-                bid_amount: lowestBid.bidAmount
-            };
-
-            emailjs.send(
-                'service_yvu0yx7',
-                'template_e2qlr2m',
-                '-fnoELV-sMb2n1XaV',
-                templateParams
-            ).then(
-                (response) => {
-                    console.log('SUCCESS!', response.status, response.text);
-                },
-                (err) => {
-                    console.log('FAILED...', err);
-                }
-            );
+            const emailCargoKey = `${userMail.email}_${cargoId}`;
+            const lastEmailSentTime = localStorage.getItem(emailCargoKey);
+            const currentTime = new Date().getTime();
+            if (!lastEmailSentTime || (currentTime - lastEmailSentTime > 3600000)){
+                const templateParams = {
+                    to_name: lowestBid.companyName,
+                    to_email: userMail.email,
+                    item_name: cargoName,
+                    bid_amount: lowestBid.bidAmount
+                };
+    
+                emailjs.send(
+                    'service_yvu0yx7',
+                    'template_e2qlr2m',
+                    templateParams,
+                    '-fnoELV-sMb2n1XaV'
+                ).then(
+                    (response) => {
+                        console.log('SUCCESS!', response.status, response.text);
+                        console.log(userMail.email)
+                        localStorage.setItem(emailCargoKey, currentTime);
+                    },
+                    (err) => {
+                        console.log('FAILED...', err);
+                    }
+                );
+            }else {
+                console.log('Email not sent: Cooldown period of 1 hour not passed.');
+            }
+            
         }
     }, [lowestBid]);
 

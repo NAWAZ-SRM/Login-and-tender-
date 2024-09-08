@@ -3,6 +3,14 @@ import React, { useState, useEffect } from 'react';
 function BidForm({ cargoId, userdata }) {
     const [bidAmount, setBidAmount] = useState('');
     const [companyName, setCompanyName] = useState('');
+    const [bidCount, setBidCount] = useState(() => {
+        const storedBidCount = localStorage.getItem('bidCount');
+        return storedBidCount ? JSON.parse(storedBidCount) : {};
+    });
+
+    useEffect(() => {
+        localStorage.setItem('bidCount', JSON.stringify(bidCount));
+    }, [bidCount]);
 
     // Debugging: log userdata to check if it is passed correctly
     useEffect(() => {
@@ -14,6 +22,10 @@ function BidForm({ cargoId, userdata }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (bidCount[cargoId]) {
+            alert('You have already placed a bid for this cargo.');
+            return;
+        }
         try {
             const timestamp = new Date().getTime();
             const response = await fetch('http://localhost:5000/api/bids', {
@@ -25,6 +37,7 @@ function BidForm({ cargoId, userdata }) {
             });
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             alert('Bid submitted successfully');
+            setBidCount((prevBidCount) => ({ ...prevBidCount, [cargoId]: true }));
         } catch (error) {
             console.error('Error submitting bid:', error);
             alert('Failed to submit bid. Please try again.');

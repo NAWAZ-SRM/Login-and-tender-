@@ -24,7 +24,7 @@ function App() {
         <Route path='/home' element={<Home />} />
         <Route path='/' element={<Login />} />
         <Route path='/login' element={<Login />} />
-        <Route path='/dashboard' element={<Dashboard />} />
+        <Route path='/dashboard' element={<Dashboard/>} />
         <Route path='*' element={<Error />} />
         <Route path="/BidCargo" element={<BidCargo userdata={userdata} />} /> {/* Passing userdata */}
         <Route path="/PostCargo" element={<PostCargo />} />
