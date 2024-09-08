@@ -4,6 +4,20 @@ import axios from 'axios';
 const SubmitTender = ({ cargoId }) => {
     const [companyName, setCompanyName] = useState('');
     const [quote, setQuote] = useState(0);
+    const [userdata, setUserdata] = useState({});
+
+    useEffect(() => {
+        const getUser = async () => {
+            try {
+                const response = await axios.get("http://localhost:5000/login/success", { withCredentials: true });
+                setUserdata(response.data.user);
+                setCompanyName(response.data.user.username);
+            } catch (error) {
+                console.log("error", error)
+            }
+        }
+        getUser();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,7 +31,6 @@ const SubmitTender = ({ cargoId }) => {
 
     return (
         <form onSubmit={handleSubmit}>
-            <input type="text" placeholder="Company Name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
             <input type="number" placeholder="Quote" value={quote} onChange={(e) => setQuote(e.target.value)} required />
             <button type="submit">Submit Tender</button>
         </form>
