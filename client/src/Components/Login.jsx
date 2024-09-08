@@ -1,8 +1,7 @@
-import React from 'react'
+import React from 'react';
 import "./login.css"
 
 const Login = () => {
-
     const loginwithgoogle = ()=>{
         window.open("http://localhost:5000/auth/google/callback","_self")
     }

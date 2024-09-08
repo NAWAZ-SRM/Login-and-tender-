@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 // import PostCargo from './Postcargo'; // Ensure correct import path
 import BidForm from './BidForm';
+import emailjs from '@emailjs/browser';
 
-function BidCargo() {
+function BidCargo({ userdata }) {
     const [cargoList, setCargoList] = useState([]);
     const [selectedCargo, setSelectedCargo] = useState(null);
 
@@ -67,9 +68,9 @@ function BidCargo() {
             {selectedCargo && (
                 <div>
                     <h2>Place a Bid for {selectedCargo.title}</h2>
-                    <BidForm cargoId={selectedCargo._id} />
+                    <BidForm userdata={userdata} cargoId={selectedCargo._id} />
                     <h2>Bids</h2>
-                    <BidsList cargoId={selectedCargo._id} />
+                    <BidsList cargoId={selectedCargo._id} cargoName={selectedCargo.title} userMail={userdata}/>
                 </div>
             )}
         </div>
@@ -112,7 +113,73 @@ function BidCargo() {
 
 // New version with the lowest bid option
 
-function BidsList({ cargoId }) {
+// function BidsList({ cargoId }) {
+//     const [bids, setBids] = useState([]);
+//     const [lowestBid, setLowestBid] = useState(null);
+
+//     useEffect(() => {
+//         const fetchBids = async () => {
+//             try {
+//                 const response = await fetch(`http://localhost:5000/api/bids/${cargoId}`);
+//                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+//                 const data = await response.json();
+//                 console.log('Bids List:', data);  // Debugging line
+//                 setBids(data);
+
+//                 // Find the lowest bid
+//                 if (data.length > 0) {
+//                     const lowest = data.reduce((min, bid) => bid.bidAmount < min.bidAmount ? bid : min, data[0]);
+//                     setLowestBid(lowest);
+//                 }
+//             } catch (error) {
+//                 console.error('Error fetching bids:', error);
+//                 alert('Failed to load bids');
+//             }
+//         };
+
+//         fetchBids();
+//     }, [cargoId]);
+
+//     const sendEmailToLowestBid = () => {
+//         if (lowestBid) {
+//             const templateParams = {
+//                 to_name: lowestBid.companyName,
+//                 to_email: lowestBid.email,
+//                 subject: 'Lowest Bid Notification',
+//                 message_html: `Congratulations, your bid of $${lowestBid.bidAmount} is the lowest bid for the cargo.`,
+//             };
+
+//             emailjs.send(
+//                 '-fnoELV-sMb2n1XaV',
+//                 'template_e2qlr2m',
+//                 templateParams
+//             ).then(
+//                 (response) => {
+//                     console.log('SUCCESS!', response.status, response.text);
+//                 },
+//                 (err) => {
+//                     console.log('FAILED...', err);
+//                 }
+//             );
+//         }
+//     };
+
+//     return (
+//         <div>
+//             {lowestBid && (
+//                 <h1>Lowest Bid: {lowestBid.companyName} - ${lowestBid.bidAmount}</h1>
+//             )}
+//             <ul>
+//                 {bids.map(bid => (
+//                     <li key={bid._id}>
+//                         {bid.companyName}: ${bid.bidAmount} (Bid Date: {new Date(bid.bidDate).toLocaleDateString()})
+//                     </li>
+//                 ))}
+//             </ul>
+//         </div>
+//     );
+// }
+function BidsList({ cargoId,cargoName, userMail }) {
     const [bids, setBids] = useState([]);
     const [lowestBid, setLowestBid] = useState(null);
 
@@ -139,6 +206,41 @@ function BidsList({ cargoId }) {
         fetchBids();
     }, [cargoId]);
 
+    useEffect(() => {
+        if (lowestBid) {
+            const emailCargoKey = `${userMail.email}_${cargoId}`;
+            const lastEmailSentTime = localStorage.getItem(emailCargoKey);
+            const currentTime = new Date().getTime();
+            if (!lastEmailSentTime || (currentTime - lastEmailSentTime > 3600000)){
+                const templateParams = {
+                    to_name: lowestBid.companyName,
+                    to_email: userMail.email,
+                    item_name: cargoName,
+                    bid_amount: lowestBid.bidAmount
+                };
+    
+                emailjs.send(
+                    'service_yvu0yx7',
+                    'template_e2qlr2m',
+                    templateParams,
+                    '-fnoELV-sMb2n1XaV'
+                ).then(
+                    (response) => {
+                        console.log('SUCCESS!', response.status, response.text);
+                        console.log(userMail.email)
+                        localStorage.setItem(emailCargoKey, currentTime);
+                    },
+                    (err) => {
+                        console.log('FAILED...', err);
+                    }
+                );
+            }else {
+                console.log('Email not sent: Cooldown period of 1 hour not passed.');
+            }
+            
+        }
+    }, [lowestBid]);
+
     return (
         <div>
             {lowestBid && (
@@ -154,6 +256,5 @@ function BidsList({ cargoId }) {
         </div>
     );
 }
-
 
 export default BidCargo;

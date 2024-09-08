@@ -4,8 +4,6 @@ function PostCargo() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [weight, setWeight] = useState('');
-    const [distance, setDistance] = useState(''); // New field for distance
-    const [loadingMeter, setLoadingMeter] = useState('');
     const [isHazardous, setIsHazardous] = useState(false);
     const [origin, setOrigin] = useState('');
     const [destination, setDestination] = useState('');
@@ -44,7 +42,7 @@ function PostCargo() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ title, description, weight, distance, loadingMeter, isHazardous, origin, destination }),
+                body: JSON.stringify({ title, description, weight, isHazardous, origin, destination }),
             });
 
             if (!cargoResponse.ok) throw new Error('Failed to post cargo');
@@ -60,7 +58,6 @@ function PostCargo() {
                 body: JSON.stringify({
                     weight : parseFloat(weight),
                     // loading_meter: parseFloat(loadingMeter), // Send loading_meter to the Flask API
-                    distance: parseFloat(distance),
                     origin: origin,
                     destination: destination
                      
@@ -69,7 +66,19 @@ function PostCargo() {
 
             if (!priceResponse.ok) throw new Error('Failed to fetch estimated price');
             const priceData = await priceResponse.json();
-            setEstimatedPrice(priceData.predictions[0]);
+            let price;
+            if (priceData.predictions && priceData.predictions.length > 0) {
+                price = priceData.predictions[0];
+              } else {
+                console.error('No price predictions available');
+              }
+            console.log('Price before multiplication:', price);
+            console.log('Is hazardous:', isHazardous);
+            if (isHazardous) {
+                price = price * 1.5;
+            }
+            console.log('Price after multiplication:', price);
+            setEstimatedPrice(price);
             setError('');
 
             fetchBids(cargoData.id);
@@ -116,16 +125,6 @@ function PostCargo() {
                 <label>
                     Weight:
                     <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} required />
-                </label>
-                <br />
-                <label>
-                    Distance:
-                    <input type="number" value={distance} onChange={(e) => setDistance(e.target.value)} required />
-                </label>
-                <br />
-                <label>
-                    Loading Meter:
-                    <input type="number" value={loadingMeter} onChange={(e) => setLoadingMeter(e.target.value)} />
                 </label>
                 <br />
                 <label>

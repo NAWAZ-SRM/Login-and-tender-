@@ -40,7 +40,7 @@ function CargoDetails() {
             <ul>
                 {bids.map(bid => (
                     <li key={bid._id}>
-                        {bid.companyName}: ${bid.bidAmount} (Bid Date: {new Date(bid.bidDate).toLocaleDateString()})
+                        {bid.companyName}: ${bid.bidAmount} (Bid Date: {new Date(bid.timestamp).toLocaleDateString()})
                     </li>
                 ))}
             </ul>
