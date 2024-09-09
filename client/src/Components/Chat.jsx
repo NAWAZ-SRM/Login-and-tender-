@@ -60,7 +60,7 @@ function Chat({userdata}) {
 
   // Fetch contacts once the component mounts
   useEffect(() => {
-    const userId = userdata.displayName;
+    const userId = userdata._id;
     const fetchContacts = async () => {
       try {
         const response = await axios.get(`http://localhost:5000/contacts/${userId}`);
@@ -88,9 +88,9 @@ function Chat({userdata}) {
   };
 
   // Select a user to send a private message
-  const handleSelectUser = (user) => {
-    setRecipientId(user._id);
-    setSelectedUser(user);
+  const handleSelectUser = (userdata) => {
+    setRecipientId(userdata._id);
+    setSelectedUser(userdata.displayName);
     setMessages([]); // Clear previous messages when selecting a new user
     setSearchQuery(''); // Clear search query
     setSearchResults([]); // Clear search results
@@ -150,20 +150,20 @@ function Chat({userdata}) {
 
       {/* Display current recipient */}
       <div className="text-center p-2 bg-gray-200">
-        {selectedUser ? `Currently chatting with: ${selectedUser.username}` : 'Select a user to start chatting'}
+        {selectedUser ? `Currently chatting with: ${selectedUser.displayName}` : 'Select a user to start chatting'}
       </div>
 
       {/* Conditionally render search results */}
       {searchInitiated && (
         <div className="p-4 bg-white border border-gray-300 rounded-md shadow-md">
           {searchResults.length > 0 ? (
-            searchResults.map((user) => (
+            searchResults.map((userdata) => (
               <div
-                key={user._id}
-                onClick={() => handleSelectUser(user)}
-                className={`p-2 cursor-pointer ${selectedUser && selectedUser._id === user._id ? 'bg-blue-100' : 'bg-gray-100'} rounded-md`}
+                key={userdata._id}
+                onClick={() => handleSelectUser(userdata)}
+                className={`p-2 cursor-pointer ${selectedUser && selectedUser._id === userdata._id ? 'bg-blue-100' : 'bg-gray-100'} rounded-md`}
               >
-                {user.username}
+                {userdata.displayName}
               </div>
             ))
           ) : (
