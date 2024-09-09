@@ -136,6 +136,12 @@ import cargoRoutes from './routes/cargo.js';
 import bidRoutes from './routes/bids.js';
 // import cronJobs from './jobs/cronJobs.js';
 import path from 'path';
+// mini imports
+import http from 'http';
+import { Server as socketIo } from 'socket.io';
+import bodyParser from 'body-parser';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 connectDB();
@@ -144,13 +150,17 @@ const app = express();
 const PORT = 5000;
 const clientid = "5529960346-gkrfgn131kp1u1havlnsn0kc8tjb7a4a.apps.googleusercontent.com";
 const clientsecret = "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";
+// mini consts
+const server = http.createServer(app);
+const io = new socketIo(server);
 
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: "http://localhost:5000",
   methods: "GET,POST,PUT,DELETE",
   credentials: true
 }));
 
+app.use(express.static(path.join(path.resolve(), '../client/dist')));
 app.use(express.json());
 
 app.use(session({
@@ -202,8 +212,8 @@ passport.deserializeUser((user, done) => {
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 app.get("/auth/google/callback", passport.authenticate("google", {
-  successRedirect: "http://localhost:3000/dashboard",
-  failureRedirect: "http://localhost:3000/login"
+  successRedirect: "http://localhost:5000/dashboard",
+  failureRedirect: "http://localhost:5000/login"
 }));
 
 app.get("/login/sucess", async (req, res) => {
@@ -217,7 +227,97 @@ app.get("/login/sucess", async (req, res) => {
 app.get("/logout", (req, res, next) => {
   req.logout(function (err) {
     if (err) { return next(err) }
-    res.redirect("http://localhost:3000");
+    res.redirect("http://localhost:5000");
+  });
+});
+
+//mini api
+app.get('/contacts/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await userdb.findById(userId).populate('contacts', '_id username');
+    if (user) {
+      res.status(200).json(user.contacts);
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Search users endpoint
+app.get('/search-users', async (req, res) => {
+  const { query } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ message: 'Query parameter is required' });
+  }
+
+  try {
+    const users = await userdb.find({ displayName: new RegExp(query, 'i') }).select('_id displayName');
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Socket.IO configuration
+io.on('connection', (socket) => {
+  console.log('A user connected');
+
+  socket.on('set username', async (userId) => {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.log('Invalid userId');
+      return;
+    }
+    const user = await userdb.findByIdAndUpdate(userId, { socketId: socket.id });
+    if (user) {
+      console.log(`${user.displayName} connected with socket ID: ${socket.id}`);
+    }
+  });
+
+  socket.on('private message', async (msg) => {
+    const { recipientId, text } = msg;
+    const recipient = await userdb.findById(recipientId);
+
+    if (recipient && recipient.socketId) {
+      const sender = await userdb.findOne({ socketId: socket.id });
+
+      if (sender) {
+        if (!sender.contacts.includes(recipient._id)) {
+          sender.contacts.push(recipient._id);
+          await sender.save();
+        }
+        if (!recipient.contacts.includes(sender._id)) {
+          recipient.contacts.push(sender._id);
+          await recipient.save();
+        }
+
+        io.to(recipient.socketId).emit('chat message', {
+          text,
+          sender: sender.displayName,
+        });
+
+        console.log(`Message sent from ${sender.displayName} to ${recipient.displayName}`);
+      }
+    } else {
+      console.log('Recipient not found or not connected');
+    }
+  });
+
+  socket.on('chat message', async (msg) => {
+    const user = await userdb.findOne({ socketId: socket.id });
+    const senderUsername = user ? user.displayName : 'Anonymous';
+    io.emit('chat message', { text: msg.text, sender: senderUsername });
+  });
+
+  socket.on('disconnect', async () => {
+    console.log('User disconnected');
+    await userdb.findOneAndUpdate({ socketId: socket.id }, { socketId: null });
   });
 });
 
@@ -227,9 +327,13 @@ app.use('/api/cargo', cargoRoutes);
 app.use('/api/bids', bidRoutes);
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build/index.html'));
+  res.sendFile(path.join(path.resolve(), '../client/dist/index.html'));
 });
+
+
 
 app.listen(PORT, () => {
   console.log(`Server started at port no ${PORT}`);
 });
+
+

@@ -17,7 +17,9 @@ const userSchema = new mongoose.Schema({
   googleId: String,
   displayName: String,
   email: String,
-  image: String
+  image: String,
+  socketId: { type: String },
+  contacts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // storing contacts of previously texted users
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);

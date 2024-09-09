@@ -6,6 +6,7 @@ import Dashboard from './Components/Dashboard';
 import Error from './Components/Error';
 import BidCargo from './Components/BidCargo';
 import PostCargo from './Components/Postcargo';
+import Chat from './Components/Chat'
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -28,6 +29,7 @@ function App() {
         <Route path='*' element={<Error />} />
         <Route path="/BidCargo" element={<BidCargo userdata={userdata} />} /> {/* Passing userdata */}
         <Route path="/PostCargo" element={<PostCargo />} />
+        <Route path="/Chat" element={<Chat userdata={userdata} />} />
       </Routes>
     </>
   );
