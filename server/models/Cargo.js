@@ -12,20 +12,38 @@
 
 // module.exports = mongoose.model('Cargo', cargoSchema);
 
-const mongoose = require('mongoose');
+// const mongoose = require('mongoose');
+
+// const cargoSchema = new mongoose.Schema({
+//     title: String,
+//     description: String,
+//     weight: Number,
+//     isHazardous: Boolean,
+//     origin: String,
+//     destination: String,
+//     loading_meter: Number,
+//     distance: Number,
+//     estimatedPrice: Number,  // Add this line
+// }, { timestamps: true });
+
+// const Cargo = mongoose.model('Cargo', cargoSchema);
+
+// module.exports = Cargo;
+
+import mongoose from 'mongoose';
 
 const cargoSchema = new mongoose.Schema({
-    title: String,
-    description: String,
-    weight: Number,
-    isHazardous: Boolean,
-    origin: String,
-    destination: String,
-    loading_meter: Number,
-    distance: Number,
-    estimatedPrice: Number,  // Add this line
+  title: String,
+  description: String,
+  weight: Number,
+  isHazardous: Boolean,
+  origin: String,
+  destination: String,
+  loading_meter: Number,
+  distance: Number,
+  estimatedPrice: Number,
 }, { timestamps: true });
 
 const Cargo = mongoose.model('Cargo', cargoSchema);
 
-module.exports = Cargo;
+export default Cargo;
