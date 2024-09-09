@@ -20,7 +20,7 @@ function Chat({userdata}) {
 
   useEffect(() => {
     // Retrieve user ID from local storage
-    const userId = userdata.displayName;
+    const userId = userdata._id;
     console.log('User ID:', userId); // Check user ID
 
     if (userId) {
