@@ -132,6 +132,7 @@ import session from 'express-session';
 import passport from 'passport';
 import { Strategy as OAuth2Strategy } from 'passport-google-oauth2';
 import userdb from './models/userSchema.js';
+import chat from './models/chat.js';
 import cargoRoutes from './routes/cargo.js';
 import bidRoutes from './routes/bids.js';
 // import cronJobs from './jobs/cronJobs.js';
@@ -155,7 +156,7 @@ const server = http.createServer(app);
 const io = new socketIo(server);
 
 app.use(cors({
-  origin: "http://localhost:5000",
+  origin: ["http://localhost:5000", "http://localhost:5000/chat"],
   methods: "GET,POST,PUT,DELETE",
   credentials: true
 }));
@@ -212,7 +213,7 @@ passport.deserializeUser((user, done) => {
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 app.get("/auth/google/callback", passport.authenticate("google", {
-  successRedirect: "http://localhost:5000/dashboard",
+  successRedirect: "http://localhost:5000/details",
   failureRedirect: "http://localhost:5000/login"
 }));
 
@@ -232,11 +233,35 @@ app.get("/logout", (req, res, next) => {
 });
 
 //mini api
+app.post('/details', async (req, res) => {
+  const { username, phoneno } = req.body;
+  
+
+  try {
+    const cuser = await chat.findOne({ username });
+    if (!cuser) {
+      // return res.status(400).json({ status: 'error', message: 'Invalid credentials' });
+      const newUser = new chat({ username, phoneno:phoneno });
+      await newUser.save();
+      const token = jwt.sign({ id: newUser._id }, 'your_jwt_secret', { expiresIn: '1h' });
+
+    res.status(200).json({ status: 'success', message: 'Login successful', token, userId: cuser._id });
+    }
+
+    const token = jwt.sign({ id: cuser._id }, 'your_jwt_secret', { expiresIn: '1h' });
+    res.status(200).json({ status: 'success', message: 'Login successful', token, userId: cuser._id });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+});
+
+// Get contacts endpoint
 app.get('/contacts/:userId', async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const user = await userdb.findById(userId).populate('contacts', '_id username');
+    const user = await chat.findById(userId).populate('contacts', '_id username');
     if (user) {
       res.status(200).json(user.contacts);
     } else {
@@ -257,7 +282,7 @@ app.get('/search-users', async (req, res) => {
   }
 
   try {
-    const users = await userdb.find({ displayName: new RegExp(query, 'i') }).select('_id displayName');
+    const users = await chat.find({ username: new RegExp(query, 'i') }).select('_id username');
     res.status(200).json(users);
   } catch (error) {
     console.error('Error searching users:', error);
@@ -274,18 +299,18 @@ io.on('connection', (socket) => {
       console.log('Invalid userId');
       return;
     }
-    const user = await userdb.findByIdAndUpdate(userId, { socketId: socket.id });
+    const user = await chat.findByIdAndUpdate(userId, { socketId: socket.id });
     if (user) {
-      console.log(`${user.displayName} connected with socket ID: ${socket.id}`);
+      console.log(`${user.username} connected with socket ID: ${socket.id}`);
     }
   });
 
   socket.on('private message', async (msg) => {
     const { recipientId, text } = msg;
-    const recipient = await userdb.findById(recipientId);
+    const recipient = await chat.findById(recipientId);
 
     if (recipient && recipient.socketId) {
-      const sender = await userdb.findOne({ socketId: socket.id });
+      const sender = await chat.findOne({ socketId: socket.id });
 
       if (sender) {
         if (!sender.contacts.includes(recipient._id)) {
@@ -299,10 +324,10 @@ io.on('connection', (socket) => {
 
         io.to(recipient.socketId).emit('chat message', {
           text,
-          sender: sender.displayName,
+          sender: sender.username,
         });
 
-        console.log(`Message sent from ${sender.displayName} to ${recipient.displayName}`);
+        console.log(`Message sent from ${sender.username} to ${recipient.username}`);
       }
     } else {
       console.log('Recipient not found or not connected');
@@ -310,16 +335,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat message', async (msg) => {
-    const user = await userdb.findOne({ socketId: socket.id });
-    const senderUsername = user ? user.displayName : 'Anonymous';
+    const user = await chat.findOne({ socketId: socket.id });
+    const senderUsername = user ? user.username : 'Anonymous';
     io.emit('chat message', { text: msg.text, sender: senderUsername });
   });
 
   socket.on('disconnect', async () => {
     console.log('User disconnected');
-    await userdb.findOneAndUpdate({ socketId: socket.id }, { socketId: null });
+    await chat.findOneAndUpdate({ socketId: socket.id }, { socketId: null });
   });
 });
+
 
 app.use(express.json());
 
